@@ -1,0 +1,22 @@
+services:
+  backrest:
+    image: ghcr.io/garethgeorge/backrest:scratch
+    container_name: backrest
+    hostname: backrest
+    restart: unless-stopped
+    ports:
+      - "9898:9898"
+    environment:
+      BACKREST_DATA: /data
+      BACKREST_CONFIG: /config/config.json
+      XDG_CACHE_HOME: /cache
+      TMPDIR: /tmp
+      TZ: UTC
+    volumes:
+      - ${BACKREST_DATASET}:/data
+      - ${BACKREST_CONFIG_DATASET}:/config
+      - ${BACKREST_CACHE_DATASET}:/cache
+      - ${BACKREST_TMP_DATASET}:/tmp
+      - ${BACKREST_RCLONE_DATASET}:/root/.config/rclone
+      - ${BACKREST_USERDATA_PATH}:/userdata:ro
+      - ${BACKREST_REPOS_DATASET}:/repos
