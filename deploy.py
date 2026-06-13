@@ -273,12 +273,25 @@ def render_wrapper(manifest: AppManifest) -> str:
 def render_metadata(manifest: AppManifest, existing: dict[str, Any] | None = None) -> str | None:
     if not manifest.icon:
         return None
+    import ast
+
     data = dict(existing or {})
-    if "metadata" not in data or not isinstance(data["metadata"], dict):
-        data["metadata"] = {}
-    data["metadata"]["icon"] = (
+    # TrueNAS custom apps store metadata as a string repr of a dict;
+    # official apps use a proper nested YAML mapping. Handle both.
+    meta = data.get("metadata")
+    if isinstance(meta, str):
+        try:
+            meta = ast.literal_eval(meta)
+        except (ValueError, SyntaxError):
+            meta = {}
+    if not isinstance(meta, dict):
+        meta = {}
+    meta["icon"] = (
         f"data:{manifest.icon['media_type']};base64,{manifest.icon['base64']}"
     )
+    data["metadata"] = meta
+    # Remove stale top-level icon from previous deploy runs.
+    data.pop("icon", None)
     try:
         import yaml  # type: ignore
 
