@@ -117,18 +117,6 @@ def yaml_quote(value: Any) -> str:
     return json.dumps(text)
 
 
-def dump_simple_yaml(data: dict[str, Any]) -> str:
-    lines: list[str] = []
-    for key in sorted(data):
-        value = data[key]
-        if isinstance(value, str) and "\n" in value:
-            lines.append(f"{key}: |")
-            lines.extend(f"  {line}" if line else "" for line in value.splitlines())
-        else:
-            lines.append(f"{key}: {yaml_quote(value)}")
-    return "\n".join(lines) + "\n"
-
-
 def validate_manifest(path: Path, raw: Any) -> AppManifest:
     if not isinstance(raw, dict):
         raise DeployError(f"{path}: manifest must be a mapping")
@@ -285,11 +273,30 @@ def render_wrapper(manifest: AppManifest) -> str:
 def render_metadata(manifest: AppManifest, existing: dict[str, Any] | None = None) -> str | None:
     if not manifest.icon:
         return None
-    metadata = dict(existing or {})
-    metadata["icon"] = (
+    data = dict(existing or {})
+    if "metadata" not in data or not isinstance(data["metadata"], dict):
+        data["metadata"] = {}
+    data["metadata"]["icon"] = (
         f"data:{manifest.icon['media_type']};base64,{manifest.icon['base64']}"
     )
-    return dump_simple_yaml(metadata)
+    try:
+        import yaml  # type: ignore
+
+        return yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    except ModuleNotFoundError:
+        yq = shutil.which("yq")
+        if yq is None:
+            raise DeployError("Cannot write metadata: install PyYAML or provide yq in PATH")
+        proc = subprocess.run(
+            [yq, "-P", json.dumps(data)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise DeployError(f"yq failed to format metadata: {proc.stderr.strip()}")
+        return proc.stdout
 
 
 def git_revision(repo_root: Path) -> str | None:

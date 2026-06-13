@@ -265,16 +265,26 @@ simple validation can often be done from the app directory with
 TrueNAS Custom Apps may show blank icons by default. If icon metadata is needed,
 document it in the app README rather than silently relying on UI state.
 
-When `manifest.yaml` includes an `icon` block, the deployer writes an offline
-safe data URI into TrueNAS app metadata. The metadata file lives on TrueNAS
-under:
+When `manifest.yaml` includes an `icon` block, the deployer writes a data URI
+into the nested `metadata` dict inside TrueNAS app metadata. The metadata file
+lives on TrueNAS under:
 
 ```text
 /mnt/.ix-apps/app_configs/<app-name>/metadata.yaml
 ```
 
+The icon is written inside the `metadata` key (not as a sibling):
+
+```yaml
+"metadata":
+  "icon": "data:image/svg+xml;base64,..."
+  "name": "app-name"
+  ...
+```
+
 Prefer offline-safe `data:image/...;base64,...` icons when the deployment should
-not depend on external image URLs.
+not depend on external image URLs. To add or update an icon, base64-encode the
+image and set `media_type` and `base64` in the manifest's `icon` block.
 
 ## Validation
 
