@@ -385,6 +385,14 @@ def write_text(path: Path, content: str, dry_run: bool) -> None:
     os.replace(tmp_name, path)
 
 
+def regenerate_app_metadata(client: Any | None, dry_run: bool) -> None:
+    if dry_run:
+        print("DRY-RUN app.metadata_generate")
+    elif client is not None:
+        print("regenerating app metadata")
+        client.call("app.metadata_generate", job=True)
+
+
 def read_env_keys(path: Path) -> set[str]:
     keys: set[str] = set()
     if not path.exists():
@@ -501,6 +509,7 @@ def apply_app(
     metadata = render_metadata(manifest, existing_metadata)
     if metadata is not None:
         write_text(manifest.metadata_path, metadata, dry_run)
+        regenerate_app_metadata(client, dry_run)
 
 
 def with_lock(lock_path: Path) -> Any:
