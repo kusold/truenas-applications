@@ -234,7 +234,7 @@ def validate_manifest(path: Path, raw: Any) -> AppManifest:
 
 def discover_manifests(repo_root: Path) -> list[AppManifest]:
     manifests: list[AppManifest] = []
-    for manifest_path in sorted((repo_root / "truenas").glob("*/manifest.yaml")):
+    for manifest_path in sorted(repo_root.glob("*/manifest.yaml")):
         manifests.append(validate_manifest(manifest_path, load_yaml(manifest_path)))
     return manifests
 
@@ -312,25 +312,31 @@ def git_pull(
     return before, git_revision(repo_root)
 
 
-def changed_app_dirs(repo_root: Path, before: str | None, after: str | None) -> set[Path]:
+def changed_app_dirs(
+    repo_root: Path,
+    before: str | None,
+    after: str | None,
+    manifests: list[AppManifest],
+) -> set[Path]:
     changed: set[Path] = set()
     paths: list[str] = []
     status_paths: list[str] = []
     if before and after and before != after:
         paths.extend(
             run(
-                ["git", "diff", "--name-only", before, after, "--", "truenas"],
+                ["git", "diff", "--name-only", before, after],
                 repo_root,
             ).splitlines()
         )
     try:
         status_paths.extend(
-            run(["git", "status", "--porcelain", "--", "truenas"], repo_root).splitlines()
+            run(["git", "status", "--porcelain"], repo_root).splitlines()
         )
     except DeployError:
         pass
     paths.extend(raw[3:] for raw in status_paths if len(raw) > 3)
 
+    manifest_dirs = {m.app_dir.resolve() for m in manifests}
     for raw in paths:
         if not raw:
             continue
@@ -338,8 +344,10 @@ def changed_app_dirs(repo_root: Path, before: str | None, after: str | None) -> 
         if " -> " in rel:
             rel = rel.split(" -> ", 1)[1]
         parts = Path(rel).parts
-        if len(parts) >= 2 and parts[0] == "truenas":
-            changed.add(repo_root / parts[0] / parts[1])
+        if len(parts) >= 2:
+            candidate = (repo_root / parts[0] / parts[1]).resolve()
+            if candidate in manifest_dirs:
+                changed.add(candidate)
     return changed
 
 
@@ -487,7 +495,7 @@ def with_lock(lock_path: Path) -> Any:
 
 
 def main() -> int:
-    default_repo = Path(__file__).resolve().parents[1]
+    default_repo = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=default_repo)
     parser.add_argument("--dry-run", action="store_true")
@@ -509,7 +517,7 @@ def main() -> int:
     if args.app:
         selected = set(args.app)
         manifests = [manifest for manifest in manifests if manifest.app_name in selected]
-    changed_dirs = changed_app_dirs(repo_root, before, after)
+    changed_dirs = changed_app_dirs(repo_root, before, after, manifests)
 
     client = None
     client_cm = None
