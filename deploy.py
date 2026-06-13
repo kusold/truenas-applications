@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover - TrueNAS is Unix-like.
 APP_NAME_RE = re.compile(r"^[a-z]([-a-z0-9]*[a-z0-9])?$")
 DATASET_RE = re.compile(r"^[A-Za-z0-9_.:-]+(/[A-Za-z0-9_.:-]+)+$")
 ENV_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+COLLECTIVE_METADATA_PATH = Path("/mnt/.ix-apps/metadata.yaml")
 
 
 class DeployError(Exception):
@@ -287,7 +288,7 @@ def render_wrapper(manifest: AppManifest) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_metadata(manifest: AppManifest, existing: dict[str, Any] | None = None) -> str | None:
+def build_metadata(manifest: AppManifest, existing: dict[str, Any] | None = None) -> dict[str, Any] | None:
     if not manifest.icon:
         return None
     import ast
@@ -309,7 +310,12 @@ def render_metadata(manifest: AppManifest, existing: dict[str, Any] | None = Non
     data["metadata"] = meta
     # Remove stale top-level icon from previous deploy runs.
     data.pop("icon", None)
-    return dump_quoted_yaml(data)
+    return data
+
+
+def render_metadata(manifest: AppManifest, existing: dict[str, Any] | None = None) -> str | None:
+    data = build_metadata(manifest, existing)
+    return dump_quoted_yaml(data) if data is not None else None
 
 
 def git_revision(repo_root: Path) -> str | None:
@@ -385,12 +391,38 @@ def write_text(path: Path, content: str, dry_run: bool) -> None:
     os.replace(tmp_name, path)
 
 
-def regenerate_app_metadata(client: Any | None, dry_run: bool) -> None:
+def sync_collective_metadata(
+    manifest: AppManifest,
+    app_metadata: dict[str, Any],
+    dry_run: bool,
+) -> None:
+    if COLLECTIVE_METADATA_PATH.exists():
+        collective = load_yaml(COLLECTIVE_METADATA_PATH)
+        if not isinstance(collective, dict):
+            collective = {}
+    else:
+        collective = {}
+    collective[manifest.app_name] = app_metadata
+    write_text(COLLECTIVE_METADATA_PATH, dump_quoted_yaml(collective), dry_run)
+
+
+def regenerate_app_metadata(
+    client: Any | None,
+    manifest: AppManifest,
+    app_metadata: dict[str, Any],
+    dry_run: bool,
+) -> None:
     if dry_run:
         print("DRY-RUN app.metadata_generate")
     elif client is not None:
         print("regenerating app metadata")
-        client.call("app.metadata_generate", job=True)
+        try:
+            client.call("app.metadata_generate", job=True)
+        except Exception as exc:
+            if "Method does not exist" not in str(exc):
+                raise
+            print("app.metadata_generate unavailable; updating collective metadata directly")
+            sync_collective_metadata(manifest, app_metadata, dry_run)
 
 
 def read_env_keys(path: Path) -> set[str]:
@@ -506,10 +538,10 @@ def apply_app(
         loaded_metadata = load_yaml(manifest.metadata_path)
         if isinstance(loaded_metadata, dict):
             existing_metadata = loaded_metadata
-    metadata = render_metadata(manifest, existing_metadata)
+    metadata = build_metadata(manifest, existing_metadata)
     if metadata is not None:
-        write_text(manifest.metadata_path, metadata, dry_run)
-        regenerate_app_metadata(client, dry_run)
+        write_text(manifest.metadata_path, dump_quoted_yaml(metadata), dry_run)
+        regenerate_app_metadata(client, manifest, metadata, dry_run)
 
 
 def with_lock(lock_path: Path) -> Any:
