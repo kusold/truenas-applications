@@ -109,12 +109,29 @@ def yaml_quote(value: Any) -> str:
         return "true" if value else "false"
     if isinstance(value, int):
         return str(value)
-    text = str(value)
-    if text == "":
-        return '""'
-    if re.match(r"^[A-Za-z0-9_./:@+-]+$", text):
-        return text
-    return json.dumps(text)
+    return json.dumps(str(value))
+
+
+def dump_quoted_yaml(data: dict[str, Any]) -> str:
+    try:
+        import yaml  # type: ignore
+
+        class QuotedStringDumper(yaml.SafeDumper):
+            pass
+
+        def quoted_string_representer(dumper: Any, value: str) -> Any:
+            return dumper.represent_scalar("tag:yaml.org,2002:str", value, style='"')
+
+        QuotedStringDumper.add_representer(str, quoted_string_representer)
+        return yaml.dump(
+            data,
+            Dumper=QuotedStringDumper,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+        )
+    except ModuleNotFoundError:
+        return json.dumps(data, indent=2) + "\n"
 
 
 def validate_manifest(path: Path, raw: Any) -> AppManifest:
@@ -292,24 +309,7 @@ def render_metadata(manifest: AppManifest, existing: dict[str, Any] | None = Non
     data["metadata"] = meta
     # Remove stale top-level icon from previous deploy runs.
     data.pop("icon", None)
-    try:
-        import yaml  # type: ignore
-
-        return yaml.dump(data, default_flow_style=False, allow_unicode=True, sort_keys=False)
-    except ModuleNotFoundError:
-        yq = shutil.which("yq")
-        if yq is None:
-            raise DeployError("Cannot write metadata: install PyYAML or provide yq in PATH")
-        proc = subprocess.run(
-            [yq, "-P", json.dumps(data)],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-        )
-        if proc.returncode != 0:
-            raise DeployError(f"yq failed to format metadata: {proc.stderr.strip()}")
-        return proc.stdout
+    return dump_quoted_yaml(data)
 
 
 def git_revision(repo_root: Path) -> str | None:
