@@ -13,10 +13,10 @@ services:
       TMPDIR: /tmp
       TZ: UTC
     volumes:
-      - ${BACKREST_DATASET}:/data
-      - ${BACKREST_CONFIG_DATASET}:/config
-      - ${BACKREST_CACHE_DATASET}:/cache
-      - ${BACKREST_TMP_DATASET}:/tmp
-      - ${BACKREST_RCLONE_DATASET}:/root/.config/rclone
-      - ${BACKREST_USERDATA_PATH}:/userdata:ro
+      - ${BACKREST_DATASET}/data:/data
+      - ${BACKREST_DATASET}/config:/config
+      - ${BACKREST_CACHE_DATASET}/cache:/cache
+      - ${BACKREST_CACHE_DATASET}/tmp:/tmp
+      - ${BACKREST_DATASET}/rclone:/root/.config/rclone
+      - /mnt/tank/red:/userdata:ro
       - ${BACKREST_REPOS_DATASET}:/repos

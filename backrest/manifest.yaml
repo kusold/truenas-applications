@@ -9,18 +9,12 @@ icon:
   base64: PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgcng9IjI0IiBmaWxsPSIjMWY2ZmViIi8+PHBhdGggZD0iTTMyIDg0VjM0aDM2YzE4IDAgMzAgMTAgMzAgMjUgMCAxNi0xMiAyNS0zMSAyNUg1MnYyMkgzMnptMjAtMTZoMTVjNyAwIDExLTMgMTEtOXMtNC05LTExLTlINTJ2MTh6IiBmaWxsPSIjZmZmIi8+PHBhdGggZD0iTTMwIDk2aDY4djEwSDMweiIgZmlsbD0iIzliZTlhOCIvPjwvc3ZnPg==
 
 datasets:
-  - dataset: tank/appdata/backrest/data
+  - dataset: tank/red/Applications/backrest
     compose_env: BACKREST_DATASET
-  - dataset: tank/appdata/backrest/config
-    compose_env: BACKREST_CONFIG_DATASET
-  - dataset: tank/appdata/backrest/repos
+  - dataset: tank/red/Backups/backrest
     compose_env: BACKREST_REPOS_DATASET
-  - dataset: tank/appdata/backrest/rclone
-    compose_env: BACKREST_RCLONE_DATASET
-  - dataset: tank/app-cache/backrest/cache
+  - dataset: tank/red/Replaceable/Application-Cache/backrest
     compose_env: BACKREST_CACHE_DATASET
-  - dataset: tank/app-cache/backrest/tmp
-    compose_env: BACKREST_TMP_DATASET
 
 portal:
   name: Web UI
