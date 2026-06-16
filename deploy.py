@@ -369,11 +369,13 @@ def changed_app_dirs(
         rel = raw.strip()
         if " -> " in rel:
             rel = rel.split(" -> ", 1)[1]
-        parts = Path(rel).parts
-        if len(parts) >= 2:
-            candidate = (repo_root / parts[0] / parts[1]).resolve()
-            if candidate in manifest_dirs:
-                changed.add(candidate)
+        # A change touches an app if the changed file lives inside its manifest
+        # dir. Containment (rather than a fixed path depth) handles both
+        # top-level apps (<app>/<file>) and any nested layout.
+        changed_path = (repo_root / rel).resolve()
+        for manifest_dir in manifest_dirs:
+            if manifest_dir == changed_path or manifest_dir in changed_path.parents:
+                changed.add(manifest_dir)
     return changed
 
 
@@ -495,6 +497,7 @@ def apply_app(
     installed_apps: dict[str, dict[str, Any]],
     changed_dirs: set[Path],
     dry_run: bool,
+    force: bool = False,
 ) -> None:
     env_content = render_env(manifest)
     wrapper = render_wrapper(manifest)
@@ -503,7 +506,7 @@ def apply_app(
     write_text(manifest.generated_env_path, env_content, dry_run)
 
     installed = manifest.app_name in installed_apps
-    changed = manifest.app_dir in changed_dirs
+    changed = force or manifest.app_dir in changed_dirs
 
     if client is None:
         action = "create" if not installed else ("update+redeploy" if changed else "skip")
@@ -561,6 +564,11 @@ def main() -> int:
     parser.add_argument("--repo-root", type=Path, default=default_repo)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-pull", action="store_true")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="redeploy apps even when no change is detected",
+    )
     parser.add_argument("--app", action="append", help="only process this app name")
     parser.add_argument(
         "--lock-file",
@@ -603,6 +611,7 @@ def main() -> int:
                 installed_apps,
                 changed_dirs,
                 args.dry_run,
+                args.force,
             )
     finally:
         if client_cm is not None:
