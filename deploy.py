@@ -363,6 +363,9 @@ def changed_app_dirs(
     paths.extend(raw[3:] for raw in status_paths if len(raw) > 3)
 
     manifest_dirs = {m.app_dir.resolve() for m in manifests}
+    # Files deploy.py writes into the repo each run; they are not app-definition
+    # changes and must never trigger a redeploy on their own.
+    generated_paths = {m.generated_env_path.resolve() for m in manifests}
     for raw in paths:
         if not raw:
             continue
@@ -373,6 +376,8 @@ def changed_app_dirs(
         # dir. Containment (rather than a fixed path depth) handles both
         # top-level apps (<app>/<file>) and any nested layout.
         changed_path = (repo_root / rel).resolve()
+        if changed_path in generated_paths:
+            continue
         for manifest_dir in manifest_dirs:
             if manifest_dir == changed_path or manifest_dir in changed_path.parents:
                 changed.add(manifest_dir)
