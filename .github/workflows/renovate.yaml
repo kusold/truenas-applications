@@ -6,6 +6,14 @@ on:
     # minimumReleaseAge in renovate.json holds new releases for 3 days.
     - cron: "23 */6 * * *"
   workflow_dispatch:
+    inputs:
+      log_level:
+        description: "Renovate log level"
+        default: info
+        type: choice
+        options:
+          - info
+          - debug
 
 # The default GITHUB_TOKEN is not used; Renovate authenticates with
 # RENOVATE_TOKEN, so it needs no grants.
@@ -25,7 +33,7 @@ jobs:
       - name: Renovate
         run: renovate
         env:
-          LOG_LEVEL: info
+          LOG_LEVEL: ${{ inputs.log_level || 'info' }}
           RENOVATE_PLATFORM: github
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
