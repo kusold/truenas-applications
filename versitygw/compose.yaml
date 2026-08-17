@@ -1,0 +1,31 @@
+services:
+  versitygw:
+    image: versity/versitygw:v1.7.0@sha256:c4cbd9d9cb8dedbb055ac788dbd02635651b9b1cebac95b095b3217231aa87ad
+    container_name: versitygw
+    hostname: versitygw
+    restart: unless-stopped
+    ports:
+      # S3 API
+      - "7070:7070"
+      # Web UI
+      - "7071:7071"
+    environment:
+      VGW_BACKEND: posix
+      VGW_BACKEND_ARG: /data
+      VGW_PORT: ":7070"
+      VGW_WEBUI_PORT: ":7071"
+      VGW_REGION: "us-east-1"
+      ROOT_ACCESS_KEY: "${ROOT_ACCESS_KEY:?set ROOT_ACCESS_KEY in versitygw/.env}"
+      ROOT_SECRET_KEY: "${ROOT_SECRET_KEY:?set ROOT_SECRET_KEY in versitygw/.env}"
+    volumes:
+      # Existing host path served over S3; not managed by the deployer.
+      - "${VGW_DATA_PATH:?set VGW_DATA_PATH in versitygw/.env}:/data"
+    healthcheck:
+      # GET / on the Web UI port serves index.html without auth (200).
+      # The S3 port rejects unauthenticated requests, so it cannot be probed
+      # with busybox wget directly.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:7071/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
