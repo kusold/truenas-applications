@@ -106,6 +106,9 @@ repository config in `renovate.json`:
 - Minor, patch, pin, and digest updates automerge; majors stay as PRs for
   manual review on the Dependency Dashboard.
 - New releases are held for 3 days (`minimumReleaseAge`) before automerge.
+  Docker registries do not expose release timestamps, so the hold only applies
+  to datasources that do (`minimumReleaseAgeBehaviour: timestamp-optional`
+  prevents timestamp-less docker tags from being held indefinitely).
 
 Because the TrueNAS cron deployer pulls this repo and redeploys changed apps,
 an automerged image bump deploys on the next cron run. The workflow container
