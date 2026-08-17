@@ -96,6 +96,21 @@ python3 truenas/deploy.py --dry-run --skip-pull
 The script uses `truenas_api_client.Client` for live deploys. It does not delete
 apps or datasets; disabled or removed manifests require manual cleanup.
 
+## Dependency Updates
+
+Renovate keeps Docker image tags current. It runs as a self-hosted GitHub
+Actions workflow (`.github/workflows/renovate.yaml`) on a schedule, with
+repository config in `renovate.json`:
+
+- Docker images are pinned to digests (`pinDigests`).
+- Minor, patch, pin, and digest updates automerge; majors stay as PRs for
+  manual review on the Dependency Dashboard.
+- New releases are held for 3 days (`minimumReleaseAge`) before automerge.
+
+Because the TrueNAS cron deployer pulls this repo and redeploys changed apps,
+an automerged image bump deploys on the next cron run. The workflow container
+version is pinned and must be bumped manually.
+
 ## TrueNAS Custom App Wrapper
 
 TrueNAS Custom Apps should include the app Compose file instead of inlining all
