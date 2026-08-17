@@ -4,13 +4,18 @@
   "platformAutomerge": true,
   "minimumReleaseAge": "3d",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "ignoreTests": true,
   "forkProcessing": "disabled",
   "packageRules": [
     {
-      "description": "Pin Docker images to digests, automerge minor, patch, pin, and digest updates",
+      "description": "Pin Docker images to digests",
       "matchCategories": ["docker"],
-      "pinDigests": true,
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "pinDigests": true
+    },
+    {
+      "description": "Automerge Docker minor, patch, pin, and digest updates",
+      "matchCategories": ["docker"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
       "automerge": true
     }
   ]

@@ -109,6 +109,9 @@ repository config in `renovate.json`:
   Docker registries do not expose release timestamps, so the hold only applies
   to datasources that do (`minimumReleaseAgeBehaviour: timestamp-optional`
   prevents timestamp-less docker tags from being held indefinitely).
+- `ignoreTests` is set because this repo has no pull request CI; without it
+  Renovate waits forever for external checks and never automerges. Remove it
+  if pull request workflows are added.
 
 Because the TrueNAS cron deployer pulls this repo and redeploys changed apps,
 an automerged image bump deploys on the next cron run. The workflow container
