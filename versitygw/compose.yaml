@@ -12,6 +12,7 @@ services:
     environment:
       VGW_BACKEND: posix
       VGW_BACKEND_ARG: /data
+      VGW_VERSIONING_DIR: "/versioning"
       VGW_PORT: ":7070"
       VGW_WEBUI_PORT: ":7071"
       VGW_REGION: "us-east-1"
@@ -20,6 +21,11 @@ services:
     volumes:
       # Existing host path served over S3; not managed by the deployer.
       - "${VGW_DATA_PATH:?set VGW_DATA_PATH in versitygw/.env}:/data"
+      # Previous object versions. Must be outside the data path: the gateway
+      # refuses to start if the versioning dir is inside the gateway root.
+      # Keep it on the same ZFS dataset as the data path so version copies
+      # use the kernel copy path instead of falling back to a slower copy.
+      - "${VGW_VERSIONING_PATH:?set VGW_VERSIONING_PATH in versitygw/.env}:/versioning"
     healthcheck:
       # GET / on the Web UI port serves index.html without auth (200).
       # The S3 port rejects unauthenticated requests, so it cannot be probed
