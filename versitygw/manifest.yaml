@@ -18,5 +18,6 @@ notes: |
   VersityGW exposes an existing dataset path as an S3-compatible API on port
   7070; the Web UI (explorer) is on port 7071. Single-user mode: the S3 and
   Web UI credentials are ROOT_ACCESS_KEY / ROOT_SECRET_KEY in the app .env.
-  The gateway is stateless, so no datasets are managed by the deployer; all
-  object data lives in the host path set by VGW_DATA_PATH.
+  The gateway is stateless, so no datasets are managed by the deployer; object
+  data lives in the host path set by VGW_DATA_PATH, and previous object
+  versions in VGW_VERSIONING_PATH (which must be outside VGW_DATA_PATH).
