@@ -16,6 +16,11 @@ services:
       VGW_PORT: ":7070"
       VGW_WEBUI_PORT: ":7071"
       VGW_REGION: "us-east-1"
+      # Internal IAM account store. Enables multi-tenant mode (see README):
+      # root plus admin/user/userplus accounts in users.json, and the Web UI
+      # admin dashboard. Root is still defined by the env vars below; every
+      # other account lives in the mounted dataset.
+      VGW_IAM_DIR: "/iam"
       # S3 endpoint handed to the Web UI for the browser to call. Without this
       # the gateway auto-detects URLs from its own interfaces, which inside the
       # container are Docker bridge IPs (172.x) that LAN browsers cannot route
@@ -33,6 +38,11 @@ services:
       # Keep it on the same ZFS dataset as the data path so version copies
       # use the kernel copy path instead of falling back to a slower copy.
       - "${VGW_VERSIONING_PATH:?set VGW_VERSIONING_PATH in versitygw/.env}:/versioning"
+      # IAM accounts (users.json + users.json.backup) for multi-tenant mode.
+      # Deployer-managed dataset (VGW_IAM_DATASET in .truenas-generated.env).
+      # Plain text JSON including secret keys; the gateway writes it 0600 and
+      # the dataset sits under the backed-up Applications tree.
+      - "${VGW_IAM_DATASET}:/iam"
     healthcheck:
       # GET / on the Web UI port serves index.html without auth (200).
       # The S3 port rejects unauthenticated requests, so it cannot be probed

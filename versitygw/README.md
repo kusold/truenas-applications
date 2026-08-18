@@ -10,10 +10,16 @@ Configuration choices in this definition:
 - **Backend**: `posix`, serving `VGW_DATA_PATH` (from `.env`) at `/data`.
 - **Versioning**: `VGW_VERSIONING_DIR` points at `/versioning`, backed by
   `VGW_VERSIONING_PATH` from `.env` (see below).
-- **Auth**: single-user mode. One root account (`ROOT_ACCESS_KEY` /
-  `ROOT_SECRET_KEY` in `.env`) is used for both S3 requests and Web UI login.
-  There is no IAM service, so the Web UI shows only the Explorer.
-- **Web UI**: enabled on port 7071 (`VGW_WEBUI_PORT`). The browser calls the
+- **Auth**: multi-tenant mode via the internal (file-based) IAM service.
+  `VGW_IAM_DIR` points at `/iam`, backed by the deployer-managed dataset
+  `tank/red/Applications/versitygw`. The root account
+  (`ROOT_ACCESS_KEY` / `ROOT_SECRET_KEY` in `.env`) is defined at gateway
+  runtime and never stored in the IAM directory; every other account (admin,
+  userplus, user) lives in `users.json` there. See
+  [Multi-tenancy](#multi-tenancy).
+- **Web UI**: enabled on port 7071 (`VGW_WEBUI_PORT`). Root and admin
+  logins get the admin dashboard (users, buckets, explorer); other accounts
+  get the Explorer only. The browser calls the
   S3 API on 7070 directly, so the endpoint the UI uses must be reachable from
   LAN clients: `VGW_WEBUI_GATEWAYS` pins it to `http://truenas.local:7070`.
   The gateway's auto-detected default is its own interface IPs, which inside
@@ -21,8 +27,10 @@ Configuration choices in this definition:
   with the Web UI enabled the gateway defaults `Access-Control-Allow-Origin`
   to `*` (see the startup warning), and the UI does not send credentials.
 - **TLS**: plain HTTP, like the other apps on this host.
-- **State**: none. The gateway is stateless, so `manifest.yaml` declares no
-  datasets; all data lives in `VGW_DATA_PATH` and `VGW_VERSIONING_PATH`.
+- **State**: IAM accounts only. Object data lives in `VGW_DATA_PATH` and
+  `VGW_VERSIONING_PATH` (operator-chosen host paths, not managed by the
+  deployer); the IAM account store is the one deployer-managed dataset,
+  `tank/red/Applications/versitygw`, mounted at `/iam`.
 
 ## Setup
 
@@ -44,17 +52,18 @@ This app is managed by the cron deployer in `../deploy.py`.
    python3 deploy.py --dry-run --skip-pull --app versitygw
    ```
 
-4. Run the deployer from cron without `--dry-run` on the TrueNAS host.
+4. Run the deployer from cron without `--dry-run` on the TrueNAS host. It
+   creates the IAM dataset (`tank/red/Applications/versitygw`) automatically.
 
 Renovate keeps the image tag and digest current; merges deploy on the next
 cron run.
 
 ## Ports
 
-- `7070`: S3 API endpoint.
-- `7071`: Web UI (Explorer). This is the TrueNAS portal target, and the
-  container healthcheck probes it because the S3 port rejects unauthenticated
-  requests.
+- `7070`: S3 API endpoint (the admin API is served on this port too).
+- `7071`: Web UI (Explorer for everyone; admin dashboard for root/admin).
+  This is the TrueNAS portal target, and the container healthcheck probes it
+  because the S3 port rejects unauthenticated requests.
 
 ## Using the S3 endpoint
 
@@ -68,6 +77,63 @@ aws --endpoint-url http://<truenas-host>:7070 s3 cp file.txt s3://my-bucket/
 ```
 
 Buckets are directories under `VGW_DATA_PATH`; objects are files.
+
+## Multi-tenancy
+
+The gateway runs with the internal IAM service, following the
+[upstream multi-tenant setup](https://github.com/versity/versitygw/wiki/Multi-Tenant):
+`VGW_IAM_DIR` → `/iam`, backed by the deployer-managed dataset
+`tank/red/Applications/versitygw`. Accounts and roles:
+
+| Role     | Capabilities |
+|----------|--------------|
+| root     | Everything; can manage accounts and buckets and sees all buckets. Defined by `ROOT_ACCESS_KEY`/`ROOT_SECRET_KEY` in `.env`, never stored in the IAM directory. |
+| admin    | Create/delete admin+user accounts, create buckets, see all buckets, assign bucket ownership. |
+| userplus | Like `user`, but may also create buckets. |
+| user     | Access only the buckets they own. |
+
+### Managing accounts and buckets
+
+The Web UI admin dashboard (port 7071, log in with root or an admin account)
+covers the whole workflow: create/delete users, create buckets with a chosen
+owner, and change bucket ownership. Regular `user` accounts cannot create
+buckets — an admin (or root) creates the bucket and assigns it.
+
+The same operations are available from the `versitygw admin` CLI, served on
+the S3 port:
+
+```sh
+docker exec versitygw versitygw admin \
+  --access "$ROOT_ACCESS_KEY" --secret "$ROOT_SECRET_KEY" \
+  --endpoint-url http://127.0.0.1:7070 \
+  create-user --access myuser --secret '<user-secret>' --role user
+
+docker exec versitygw versitygw admin \
+  --access "$ROOT_ACCESS_KEY" --secret "$ROOT_SECRET_KEY" \
+  --endpoint-url http://127.0.0.1:7070 \
+  change-bucket-owner --bucket my-bucket --owner myuser
+```
+
+Other subcommands: `list-users`, `update-user`, `delete-user`,
+`list-buckets`, `create-bucket`, `delete-bucket`.
+
+Tenant clients point at the same endpoint with their own credentials:
+`http://<truenas-host>:7070`.
+
+### Caveats
+
+- `users.json` is plain text JSON **including secret keys** (written 0600,
+  root-owned). The dataset sits under the recursively backed-up Applications
+  tree — treat its snapshots and replication accordingly.
+- Buckets that existed before multi-tenancy was enabled stay owned by root;
+  reassign them with `change-bucket-owner` as needed. Changing a bucket's
+  owner **removes its existing ACLs and bucket policies** (by design, for
+  security) — copy out anything you want to keep first.
+- Bucket policies apply to `user`/`userplus` accounts only; they are ignored
+  for `admin` and unavailable for root.
+- The internal IAM service is single-writer. Fine for this one-container
+  deployment; do not point a second gateway instance at the same IAM
+  directory and expect coordinated writes.
 
 ## Versioning
 
@@ -96,9 +162,9 @@ Placement rules, enforced or recommended by versitygw itself:
 
 ## Options not enabled
 
-- **IAM service**: switching from single-user to an IAM directory
-  (`VGW_IAM_DIR` on a persistent dataset) enables multiple accounts, roles,
-  and the Web UI admin dashboard.
+- **Other IAM backends**: the internal file-based IAM store is used; LDAP,
+  Vault, FreeIPA, and S3-backed IAM are available upstream if directory
+  integration is ever needed.
 - **TLS**: `--cert`/`--cert-key` (or the `VGW_CERT`/`VGW_CERT_KEY` env vars)
   can terminate HTTPS on the gateway instead.
 
