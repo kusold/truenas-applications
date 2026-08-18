@@ -16,6 +16,13 @@ services:
       VGW_PORT: ":7070"
       VGW_WEBUI_PORT: ":7071"
       VGW_REGION: "us-east-1"
+      # S3 endpoint handed to the Web UI for the browser to call. Without this
+      # the gateway auto-detects URLs from its own interfaces, which inside the
+      # container are Docker bridge IPs (172.x) that LAN browsers cannot route
+      # to; the UI then fails with "Network error: cannot reach gateway".
+      # This URL is only parsed, never fetched, by the gateway itself, so the
+      # mDNS hostname is fine here.
+      VGW_WEBUI_GATEWAYS: "http://truenas.local:7070"
       ROOT_ACCESS_KEY: "${ROOT_ACCESS_KEY:?set ROOT_ACCESS_KEY in versitygw/.env}"
       ROOT_SECRET_KEY: "${ROOT_SECRET_KEY:?set ROOT_SECRET_KEY in versitygw/.env}"
     volumes:

@@ -13,7 +13,13 @@ Configuration choices in this definition:
 - **Auth**: single-user mode. One root account (`ROOT_ACCESS_KEY` /
   `ROOT_SECRET_KEY` in `.env`) is used for both S3 requests and Web UI login.
   There is no IAM service, so the Web UI shows only the Explorer.
-- **Web UI**: enabled on port 7071 (`VGW_WEBUI_PORT`).
+- **Web UI**: enabled on port 7071 (`VGW_WEBUI_PORT`). The browser calls the
+  S3 API on 7070 directly, so the endpoint the UI uses must be reachable from
+  LAN clients: `VGW_WEBUI_GATEWAYS` pins it to `http://truenas.local:7070`.
+  The gateway's auto-detected default is its own interface IPs, which inside
+  the container are unroutable Docker bridge addresses. CORS is not an issue:
+  with the Web UI enabled the gateway defaults `Access-Control-Allow-Origin`
+  to `*` (see the startup warning), and the UI does not send credentials.
 - **TLS**: plain HTTP, like the other apps on this host.
 - **State**: none. The gateway is stateless, so `manifest.yaml` declares no
   datasets; all data lives in `VGW_DATA_PATH` and `VGW_VERSIONING_PATH`.
