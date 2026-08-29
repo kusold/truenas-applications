@@ -13,8 +13,7 @@
       "pinDigests": true
     },
     {
-      "description": "Automerge Docker minor, patch, pin, and digest updates",
-      "matchCategories": ["docker"],
+      "description": "Automerge everything except major updates",
       "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
       "automerge": true
     }
