@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     # Keep pinned; bump manually when needed. Renovate talks to the GitHub API
     # directly, so no checkout step is required.
-    container: ghcr.io/renovatebot/renovate:44.39.2
+    container: ghcr.io/renovatebot/renovate:44.65.5
     steps:
       - name: Renovate
         run: renovate
