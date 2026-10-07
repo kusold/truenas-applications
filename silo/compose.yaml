@@ -4,8 +4,8 @@ services:
     container_name: silo
     hostname: silo
     restart: unless-stopped
-    # Matches the ownership of tank/red/Applications/silo/export inherited
-    # from the official TrueNAS MinIO app; 568 is the TrueNAS apps group.
+    # Matches the ownership of tank/red/Applications/minio/export left by
+    # the official TrueNAS MinIO app; 568 is the TrueNAS apps group.
     user: "473:473"
     group_add:
       - "568"
@@ -31,7 +31,8 @@ services:
       # the MinIO app so the portal and bookmarks do not change.
       - "9002:9002"
     volumes:
-      # Deployer-managed dataset (SILO_DATASET in .truenas-generated.env).
+      # Deployer-managed dataset (SILO_DATASET in .truenas-generated.env);
+      # the dataset keeps its MinIO-era name, tank/red/Applications/minio.
       # Buckets and the .minio.sys metadata tree live in export/, carried
       # over from MinIO unchanged — Silo preserves the on-disk format.
       - "${SILO_DATASET}/export:/export"
