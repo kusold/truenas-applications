@@ -1,0 +1,47 @@
+services:
+  silo:
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z@sha256:635197cb9f36d01bee221d34d1c7d7960f6a95c48b0b6c01d99cd13bdae51a46
+    container_name: silo
+    hostname: silo
+    restart: unless-stopped
+    # Matches the ownership of tank/red/Applications/silo/export inherited
+    # from the official TrueNAS MinIO app; 568 is the TrueNAS apps group.
+    user: "473:473"
+    group_add:
+      - "568"
+    command:
+      - server
+      - --console-address
+      - ":9002"
+      - --address
+      - ":9000"
+    environment:
+      # Silo keeps MinIO's MINIO_* environment prefix unchanged.
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:?set MINIO_ROOT_USER in silo/.env}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in silo/.env}"
+      MINIO_VOLUMES: /export
+      # Alias for the healthcheck below; "mc ready" needs no credentials.
+      # The image bundles the client as mcli, with an mc compatibility alias.
+      MC_HOST_health: "http://localhost:9000"
+      TZ: Etc/UTC
+    ports:
+      # S3 API
+      - "9000:9000"
+      # Web console (portal). Upstream default is 9001; 9002 is kept from
+      # the MinIO app so the portal and bookmarks do not change.
+      - "9002:9002"
+    volumes:
+      # Deployer-managed dataset (SILO_DATASET in .truenas-generated.env).
+      # Buckets and the .minio.sys metadata tree live in export/, carried
+      # over from MinIO unchanged — Silo preserves the on-disk format.
+      - "${SILO_DATASET}/export:/export"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "--insecure", "--cluster-read", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
