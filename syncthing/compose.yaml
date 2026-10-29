@@ -1,0 +1,50 @@
+services:
+  syncthing:
+    image: syncthing/syncthing:2.1.7@sha256:2b71da7c0d0a91a6ae5285ad079226fecc0a365d08b27720e1f7037b018f7546
+    container_name: syncthing
+    hostname: syncthing
+    restart: unless-stopped
+    ports:
+      # Web GUI (TrueNAS portal target).
+      - "8384:8384"
+      # Sync protocol, TCP.
+      - "22000:22000/tcp"
+      # Sync protocol, QUIC over UDP.
+      - "22000:22000/udp"
+      # Local discovery announcements. Informational with bridge networking;
+      # see the README note on local discovery.
+      - "21027:21027/udp"
+    environment:
+      # Syncthing runs as these IDs: the image entrypoint starts as root,
+      # chowns /var/syncthing, then drops to PUID:PGID via su-exec. 568/568
+      # are the previous TrueNAS catalog app defaults, so a migrated config
+      # directory keeps its ownership.
+      PUID: "${PUID}"
+      PGID: "${PGID}"
+      TZ: "${TZ}"
+      # GUI listen address. The stock config.xml default is 127.0.0.1, which
+      # is unreachable through a published port, so pin the address the way
+      # the TrueNAS catalog app did (it forced 0.0.0.0:<web_port>). Set this
+      # to an empty string to let config.xml decide.
+      STGUIADDRESS: "0.0.0.0:8384"
+      # Image updates arrive via Renovate digest bumps plus the cron
+      # deployer; never upgrade from inside the container.
+      STNOUPGRADE: "true"
+    volumes:
+      # Deployer-managed dataset (SYNCTHING_DATASET in
+      # .truenas-generated.env): config/ (config.xml, cert.pem/key.pem device
+      # keys, index database) and the default Sync folder.
+      - "${SYNCTHING_DATASET}:/var/syncthing"
+      # Existing host path containing folders to sync; not managed by the
+      # deployer. Mount additional host paths next to this one as needed;
+      # folder paths in syncthing are container-side paths.
+      - "${SYNCTHING_DATA_PATH:?set SYNCTHING_DATA_PATH in syncthing/.env}:/data"
+    healthcheck:
+      # Unauthenticated REST health endpoint; the same check the upstream
+      # image's built-in HEALTHCHECK and the TrueNAS catalog app use. The
+      # official image ships curl.
+      test: ["CMD-SHELL", "curl -fkLsS -m 2 http://127.0.0.1:8384/rest/noauth/health | grep -o --color=never OK || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
