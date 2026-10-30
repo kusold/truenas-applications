@@ -4,9 +4,9 @@ services:
     # (apps/caddy-webdav) — the same golang.org/x/net/webdav engine family
     # rclone's "serve webdav" uses. Replaces the Apache httpd/mod_dav setup
     # this app was first migrated to. Published 2026-10-30 when the
-    # kusold/containers PR merged; pinned by digest from the first publish,
-    # and Renovate keeps the tag and digest current from here.
-    image: ghcr.io/kusold/caddy-webdav:2@sha256:2c96bcd44479be3be14ffff193b23b4410583cf9c4800024131032ed74f89919
+    # kusold/containers PR merged; pinned to the full version tag plus digest
+    # (like every other image in this repo), and Renovate keeps both current.
+    image: ghcr.io/kusold/caddy-webdav:2.11.7@sha256:2c96bcd44479be3be14ffff193b23b4410583cf9c4800024131032ed74f89919
     container_name: webdav
     hostname: webdav
     restart: unless-stopped

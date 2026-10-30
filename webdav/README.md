@@ -9,11 +9,11 @@ WebDAV with HTTP basic auth.
 
 Configuration choices in this definition:
 
-- **Image**: `ghcr.io/kusold/caddy-webdav:2`, built in
+- **Image**: `ghcr.io/kusold/caddy-webdav:2.11.7`, built in
   [kusold/containers](https://github.com/kusold/containers)
   (`apps/caddy-webdav`): upstream Caddy on distroless/static with the webdav
-  module compiled in. Pinned by digest; Renovate keeps the tag and digest
-  current.
+  module compiled in. Pinned to the full version tag plus digest, like the
+  other apps here; Renovate keeps both current.
 - **Auth**: Caddy `basic_auth` with bcrypt hashes. The whole Caddyfile —
   credentials included — lives in the deployer-managed dataset
   `tank/red/Applications/webdav` (mounted read-only at `/etc/caddy`), so
@@ -103,9 +103,10 @@ This app is managed by the cron deployer in `../deploy.py`.
 The image is built in [kusold/containers](https://github.com/kusold/containers)
 (`apps/caddy-webdav`, added in
 [kusold/containers#645](https://github.com/kusold/containers/pull/645)) and
-was first published on 2026-10-30. The compose file pins it by digest;
-Renovate keeps the tag and digest current, and a merged Renovate PR deploys
-on the next cron run. Nothing in this repo builds or publishes the image —
+was first published on 2026-10-30 (tags `2`, `2.11`, and `2.11.7` all point
+at the same image). The compose file pins the full version tag plus its
+digest; Renovate keeps both current, and a merged Renovate PR deploys on the
+next cron run. Nothing in this repo builds or publishes the image —
 bump the plugin pin in the Dockerfile over there (it is pinned to a commit
 SHA and bumped by hand, like the tailscale plugin).
 
