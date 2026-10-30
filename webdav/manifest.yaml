@@ -21,9 +21,11 @@ portal:
   path: "/"
 
 notes: |
-  WebDAV (Apache httpd with mod_dav - the same image the TrueNAS community
-  webdav catalog app runs). Serves the host path WEBDAV_SHARE_PATH
-  (webdav/.env) on port 30035 with basic auth. The htpasswd file lives at
-  tank/red/Applications/webdav/webdavhtbasic - create it before first start
-  (see the README). The share is served at http://<host>:30035/; old catalog
-  URLs of the form /<share-name> need the Alias line in compose.yaml.
+  WebDAV (Caddy with the mholt/caddy-webdav module). Serves the host path
+  WEBDAV_SHARE_PATH (webdav/.env) on port 30035 behind Caddy basic_auth. The
+  Caddyfile - including the bcrypt password hash - lives in
+  tank/red/Applications/webdav, is mounted read-only at /etc/caddy, and must
+  exist before the first start; see the README for the template and the
+  caddy hash-password command. The share is served at
+  http://<host>:30035/; old catalog URLs of the form /<share-name> need the
+  prefix tweak from the README.
