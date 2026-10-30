@@ -12,7 +12,8 @@ Configuration choices in this definition:
 - **Image**: `ghcr.io/kusold/caddy-webdav:2`, built in
   [kusold/containers](https://github.com/kusold/containers)
   (`apps/caddy-webdav`): upstream Caddy on distroless/static with the webdav
-  module compiled in. Not digest-pinned yet — see *Merge order* below.
+  module compiled in. Pinned by digest; Renovate keeps the tag and digest
+  current.
 - **Auth**: Caddy `basic_auth` with bcrypt hashes. The whole Caddyfile —
   credentials included — lives in the deployer-managed dataset
   `tank/red/Applications/webdav` (mounted read-only at `/etc/caddy`), so
@@ -97,16 +98,16 @@ This app is managed by the cron deployer in `../deploy.py`.
 
 6. Run the deployer from cron without `--dry-run` on the TrueNAS host.
 
-## Merge order
+## Image and updates
 
-The image only exists after the kusold/containers PR that adds
-`apps/caddy-webdav`
-([kusold/containers#645](https://github.com/kusold/containers/pull/645))
-merges and the release workflow publishes `ghcr.io/kusold/caddy-webdav:2` —
-merge that PR first, or `docker compose pull` (and the deployer) fails here.
-Once the tag exists, Renovate's `pinDigests` opens a PR pinning this compose
-file to the digest; from then on Renovate keeps the tag and digest current
-and merges deploy on the next cron run.
+The image is built in [kusold/containers](https://github.com/kusold/containers)
+(`apps/caddy-webdav`, added in
+[kusold/containers#645](https://github.com/kusold/containers/pull/645)) and
+was first published on 2026-10-30. The compose file pins it by digest;
+Renovate keeps the tag and digest current, and a merged Renovate PR deploys
+on the next cron run. Nothing in this repo builds or publishes the image —
+bump the plugin pin in the Dockerfile over there (it is pinned to a commit
+SHA and bumped by hand, like the tailscale plugin).
 
 ## Paths
 

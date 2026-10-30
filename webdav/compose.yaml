@@ -3,12 +3,10 @@ services:
     # Caddy with the mholt/caddy-webdav handler, built in kusold/containers
     # (apps/caddy-webdav) — the same golang.org/x/net/webdav engine family
     # rclone's "serve webdav" uses. Replaces the Apache httpd/mod_dav setup
-    # this app was first migrated to.
-    # Digest intentionally not pinned yet: the image is published by the
-    # kusold/containers PR and cannot exist before that merges. Renovate's
-    # pinDigests then opens a pin PR against the :2 tag; merge that pin PR
-    # (or pin the digest by hand) once it arrives.
-    image: ghcr.io/kusold/caddy-webdav:2
+    # this app was first migrated to. Published 2026-10-30 when the
+    # kusold/containers PR merged; pinned by digest from the first publish,
+    # and Renovate keeps the tag and digest current from here.
+    image: ghcr.io/kusold/caddy-webdav:2@sha256:2c96bcd44479be3be14ffff193b23b4410583cf9c4800024131032ed74f89919
     container_name: webdav
     hostname: webdav
     restart: unless-stopped
