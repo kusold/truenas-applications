@@ -1,0 +1,46 @@
+services:
+  webdav:
+    # Caddy with the mholt/caddy-webdav handler, built in kusold/containers
+    # (apps/caddy-webdav) — the same golang.org/x/net/webdav engine family
+    # rclone's "serve webdav" uses. Replaces the Apache httpd/mod_dav setup
+    # this app was first migrated to. Published 2026-10-30 when the
+    # kusold/containers PR merged; pinned to the full version tag plus digest
+    # (like every other image in this repo), and Renovate keeps both current.
+    image: ghcr.io/kusold/caddy-webdav:2.11.7@sha256:2c96bcd44479be3be14ffff193b23b4410583cf9c4800024131032ed74f89919
+    container_name: webdav
+    hostname: webdav
+    restart: unless-stopped
+    # Same uid/gid the TrueNAS catalog app documented; the port is above 1024
+    # and caddy writes nothing outside the tmpfs mounts below, so it needs no
+    # root. Change this together with the ownership of the served share.
+    user: "568:568"
+    ports:
+      # Host 30035 (the catalog app default and the TrueNAS portal target)
+      # forwards to caddy on the container's standard :80. Caddy binds :80
+      # fine as uid 568 - no root and no cap_add: the image's caddy binary
+      # carries the cap_net_bind_service file capability (set by xcaddy at
+      # build time). Changing the host port later only touches this line;
+      # the Caddyfile keeps listening on :80.
+      - "30035:80"
+    volumes:
+      # Existing host path served over WebDAV; not managed by the deployer.
+      - "${WEBDAV_SHARE_PATH:?set WEBDAV_SHARE_PATH in webdav/.env}:/srv/share1"
+      # Caddyfile (bcrypt hash included; see README for the template).
+      # Deployer-managed dataset (WEBDAV_CONFIG_DATASET comes from
+      # .truenas-generated.env). Mounted as a directory rather than the
+      # single file so Docker cannot turn a missing file into a directory;
+      # caddy refuses to start without the Caddyfile, which is the intended
+      # loud failure if it has not been created yet.
+      - "${WEBDAV_CONFIG_DATASET}:/etc/caddy:ro"
+    tmpfs:
+      # The image's XDG dirs (XDG_DATA_HOME=/data, XDG_CONFIG_HOME=/config)
+      # are owned by its own nonroot user (65532), but this app runs as 568.
+      # Caddy only uses them for autosave/instance bookkeeping, so small
+      # world-writable tmpfs mounts are enough; the served data stays on
+      # WEBDAV_SHARE_PATH.
+      - /data:size=16m,mode=0777
+      - /config:size=16m,mode=0777
+    # No healthcheck: the distroless image ships no shell, curl, or any other
+    # probe binary, so the old Apache bash /dev/tcp trick cannot run here
+    # either. TrueNAS shows the stack as "running" only; verify with the curl
+    # checks in the README.
