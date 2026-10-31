@@ -15,7 +15,13 @@ services:
     # root. Change this together with the ownership of the served share.
     user: "568:568"
     ports:
-      - "30035:30035"
+      # Host 30035 (the catalog app default and the TrueNAS portal target)
+      # forwards to caddy on the container's standard :80. Caddy binds :80
+      # fine as uid 568 - no root and no cap_add: the image's caddy binary
+      # carries the cap_net_bind_service file capability (set by xcaddy at
+      # build time). Changing the host port later only touches this line;
+      # the Caddyfile keeps listening on :80.
+      - "30035:80"
     volumes:
       # Existing host path served over WebDAV; not managed by the deployer.
       - "${WEBDAV_SHARE_PATH:?set WEBDAV_SHARE_PATH in webdav/.env}:/srv/share1"

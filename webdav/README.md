@@ -67,7 +67,7 @@ This app is managed by the cron deployer in `../deploy.py`.
    	order webdav before file_server
    }
 
-   :30035 {
+   :80 {
    	root * /srv/share1
    	basic_auth {
    		# docker run --rm caddy:2 caddy hash-password --plaintext 'my-password'
@@ -86,10 +86,15 @@ This app is managed by the cron deployer in `../deploy.py`.
      it ("directive 'webdav' is not an ordered HTTP handler").
    - `root * /srv/share1` is the container path; `webdav` picks it up from
      the site root.
-   - `:30035` is where caddy listens. Nothing in `compose.yaml` sets this —
-     the port mapping (`30035:30035`) and the TrueNAS portal just forward to
-     it, so the site address must keep matching them or the published port
-     connects to nothing.
+   - `:80` is the container-internal listen port. The compose mapping
+     publishes it as host port 30035, so the host port can change without
+     editing the Caddyfile. Binding :80 does not need root: the image's
+     caddy binary carries the `cap_net_bind_service` file capability (set
+     by xcaddy at build time), which applies to any user — this app runs as
+     uid 568. If a future image ever loses that capability, caddy fails
+     loudly at startup ("permission denied"); the fallback is a high-port
+     site address (for example `:30035`) with a matching `30035:30035`
+     mapping.
 
    Add more users by adding `username $2a$14$...` lines inside the
    `basic_auth` block.
@@ -130,9 +135,9 @@ intended loud failure for "forgot step 4".
 
 ## Ports
 
-- `30035`: WebDAV over HTTP (container and host port, matching the catalog
-  app default). This is the TrueNAS portal target. No conflict with backrest
-  (9898) or versitygw (7070/7071).
+- `30035`: WebDAV over HTTP on the host (the catalog app default and the
+  TrueNAS portal target), forwarded to caddy's `:80` inside the container.
+  No conflict with backrest (9898) or versitygw (7070/7071).
 
 There is no container healthcheck: the distroless image ships no shell,
 curl, or any other binary to run a probe with, and an HTTP probe would fail
@@ -152,7 +157,7 @@ curl -s -u myuser:my-password -X PROPFIND -H 'Depth: 0' \
 
 ## Tweaks
 
-All of these go inside the `:30035` site block of the Caddyfile.
+All of these go inside the `:80` site block of the Caddyfile.
 
 Read-only share (the catalog app's "Read Only" share option) — reject the
 write methods and let everything else through (PUT and DELETE answer 403,
