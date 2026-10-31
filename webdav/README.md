@@ -79,13 +79,17 @@ This app is managed by the cron deployer in `../deploy.py`.
    sudo chmod 644 /mnt/tank/red/Applications/webdav/Caddyfile
    ```
 
-   Two lines in there are load-bearing:
+   Three lines in there are load-bearing:
 
    - `order webdav before file_server` is required. `webdav` is a plugin
      directive with no default position, and Caddy refuses to start without
      it ("directive 'webdav' is not an ordered HTTP handler").
    - `root * /srv/share1` is the container path; `webdav` picks it up from
      the site root.
+   - `:30035` is where caddy listens. Nothing in `compose.yaml` sets this —
+     the port mapping (`30035:30035`) and the TrueNAS portal just forward to
+     it, so the site address must keep matching them or the published port
+     connects to nothing.
 
    Add more users by adding `username $2a$14$...` lines inside the
    `basic_auth` block.
